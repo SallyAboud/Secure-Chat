@@ -1,0 +1,692 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🚨 Attacker View</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#1a0707;--surf:#280f0f;--surf2:#361616;
+  --you:#400a0a;--peer:#350a0a;
+  --cyan:#ef4444;--purple:#b91c1c;
+  --text:#f87171;--muted:#fca5a5;
+  --green:#10b981;--yellow:#f59e0b;--red:#ef4444;
+  --border:rgba(255,255,255,0.07);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden;display:flex;flex-direction:column}
+
+/* ── SETUP SCREEN ── */
+#setup{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:200;flex-direction:column;gap:0}
+.setup-card{background:var(--surf);border:1px solid var(--border);border-radius:24px;padding:48px 44px;width:min(460px,92vw);box-shadow:0 0 80px rgba(0,212,255,.08)}
+.setup-logo{text-align:center;margin-bottom:32px}
+.setup-logo .icon{font-size:48px;display:block;margin-bottom:10px}
+.setup-logo h1{font-size:1.7rem;font-weight:700;background:linear-gradient(135deg,var(--cyan),var(--purple));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.setup-logo p{color:var(--muted);font-size:.85rem;margin-top:6px}
+.field{margin-bottom:20px}
+.field label{display:block;font-size:.8rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+.field input{width:100%;background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:13px 16px;color:var(--text);font-size:1rem;font-family:'Inter',sans-serif;outline:none;transition:border-color .2s}
+.field input:focus{border-color:var(--cyan)}
+.hint{font-size:.78rem;color:var(--muted);margin-top:6px}
+.btn-primary{width:100%;padding:14px;background:linear-gradient(135deg,var(--cyan),var(--purple));border:none;border-radius:12px;color:#fff;font-size:1rem;font-weight:700;cursor:pointer;margin-top:8px;transition:opacity .2s;font-family:'Inter',sans-serif}
+.btn-primary:hover{opacity:.88}
+.security-note{margin-top:22px;background:rgba(0,212,255,.06);border:1px solid rgba(0,212,255,.15);border-radius:10px;padding:12px 16px;font-size:.78rem;color:var(--muted);line-height:1.6}
+.security-note strong{color:var(--cyan)}
+
+/* ── CHAT SCREEN ── */
+#chat{display:none;flex-direction:column;height:100vh}
+header{background:var(--surf);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.logo-text{font-weight:700;font-size:1.1rem;background:linear-gradient(135deg,var(--cyan),var(--purple));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;margin-right:4px}
+.badge{padding:3px 10px;border-radius:20px;font-size:.75rem;font-weight:600}
+.badge-host{background:rgba(0,212,255,.15);color:var(--cyan)}
+.badge-guest{background:rgba(147,51,234,.15);color:var(--purple)}
+.fp{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--muted);background:var(--bg);padding:4px 10px;border-radius:6px;border:1px solid var(--border);margin-left:4px}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.status-dot{width:10px;height:10px;border-radius:50%;background:var(--yellow);box-shadow:0 0 8px var(--yellow);transition:all .4s;animation:pulse 2s infinite}
+.status-dot.connected{background:var(--green);box-shadow:0 0 8px var(--green)}
+.status-dot.error{background:var(--red);box-shadow:0 0 8px var(--red);animation:none}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+#status-text{font-size:.82rem;color:var(--muted)}
+.toggle-btn{background:var(--surf2);border:1px solid var(--border);color:var(--muted);padding:6px 14px;border-radius:8px;font-size:.78rem;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s}
+.toggle-btn:hover,.toggle-btn.active{border-color:var(--cyan);color:var(--cyan)}
+
+/* ── BODY LAYOUT ── */
+.body{display:flex;flex:1;overflow:hidden}
+#messages-wrap{flex:1;overflow-y:auto;padding:20px 16px;display:flex;flex-direction:column;gap:6px;scroll-behavior:smooth}
+#messages-wrap::-webkit-scrollbar{width:4px}
+#messages-wrap::-webkit-scrollbar-thumb{background:var(--surf2);border-radius:4px}
+
+/* ── BUBBLES ── */
+.msg-row{display:flex;flex-direction:column;max-width:72%}
+.msg-row.you{align-self:flex-end;align-items:flex-end}
+.msg-row.peer{align-self:flex-start;align-items:flex-start}
+.bubble{padding:12px 16px;border-radius:16px;line-height:1.55;font-size:.93rem;word-break:break-word}
+.you .bubble{background:var(--you);border:1px solid rgba(0,212,255,.12);border-bottom-right-radius:4px}
+.peer .bubble{background:var(--peer);border:1px solid rgba(147,51,234,.12);border-bottom-left-radius:4px}
+.msg-meta{font-size:.7rem;color:var(--muted);margin-top:3px;display:flex;align-items:center;gap:5px}
+.lock-icon{color:var(--green);font-size:.7rem}
+.sys-msg{text-align:center;font-size:.78rem;color:var(--muted);padding:8px 0;font-style:italic}
+
+/* ── HEX PANE ── */
+#hex-pane{flex:1;background:#0f0505;display:flex;flex-direction:column}
+.hex-title{padding:10px 14px;font-size:.75rem;font-weight:600;color:var(--cyan);border-bottom:1px solid var(--border);font-family:'JetBrains Mono',monospace}
+#hex-content{flex:1;overflow-y:auto;padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:.68rem;color:#00c896;line-height:1.8;word-break:break-all}
+#hex-content::-webkit-scrollbar{width:3px}
+#hex-content::-webkit-scrollbar-thumb{background:var(--surf2)}
+
+/* ── INPUT BAR ── */
+footer{background:var(--surf);border-top:1px solid var(--border);padding:14px 20px;display:flex;gap:12px;align-items:center;flex-shrink:0}
+#msg-input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:12px 18px;color:var(--text);font-size:.95rem;font-family:'Inter',sans-serif;outline:none;transition:border-color .2s}
+#msg-input:focus{border-color:var(--cyan)}
+#msg-input:disabled{opacity:.4;cursor:not-allowed}
+#send-btn{background:linear-gradient(135deg,var(--cyan),var(--purple));border:none;border-radius:12px;padding:12px 24px;color:#fff;font-weight:700;font-size:.95rem;cursor:pointer;font-family:'Inter',sans-serif;transition:opacity .2s;white-space:nowrap}
+#send-btn:hover{opacity:.85}
+#send-btn:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── ALERT MODAL ── */
+#alert-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:300;align-items:center;justify-content:center}
+#alert-modal.open{display:flex}
+.alert-box{background:var(--surf);border:1px solid rgba(239,68,68,.3);border-radius:20px;padding:40px;width:min(480px,92vw);text-align:center}
+.alert-box .alert-icon{font-size:48px;margin-bottom:16px}
+.alert-box h2{color:var(--red);font-size:1.4rem;margin-bottom:12px}
+.alert-box p{color:var(--muted);font-size:.9rem;line-height:1.7;margin-bottom:24px}
+.alert-box button{background:var(--red);border:none;border-radius:10px;color:#fff;padding:12px 32px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif}
+
+/* ── WAITING OVERLAY ── */
+#waiting{display:none;position:absolute;inset:0;background:rgba(7,7,26,.85);z-index:100;align-items:center;justify-content:center;flex-direction:column;gap:16px;backdrop-filter:blur(4px)}
+#waiting.show{display:flex}
+.spinner{width:44px;height:44px;border:3px solid var(--border);border-top-color:var(--cyan);border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#mic-btn, #attach-btn {background:var(--surf2);border:1px solid var(--border);border-radius:12px;padding:12px 16px;color:var(--text);font-size:1.1rem;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center}
+#mic-btn:hover, #attach-btn:hover {border-color:var(--cyan);color:var(--cyan)}
+#mic-btn:disabled, #attach-btn:disabled {opacity:.4;cursor:not-allowed;border-color:var(--border);color:var(--text)}
+#mic-btn.recording{background:rgba(239,68,68,.15);border-color:var(--red);color:var(--red);animation:pulse-mic 1.5s infinite}
+@keyframes pulse-mic{0%{box-shadow:0 0 0 0 rgba(239,68,68,.4)}70%{box-shadow:0 0 0 10px rgba(239,68,68,0)}100%{box-shadow:0 0 0 0 rgba(239,68,68,0)}}
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div id="setup">
+  <div class="setup-card">
+    <div class="setup-logo">
+      <span class="icon">🚨</span>
+      <h1>Attacker View</h1>
+      <p>Passive monitoring mode</p>
+    </div>
+    <div class="field">
+      <label>Chat Password</label>
+      <input id="secret-key" type="password" placeholder="Both devices must enter the same password" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Target Key 1 (Password Guess)</label>
+      <input id="victim-key-1" type="text" placeholder="e.g. 1234" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Target Key 2 (Password Guess)</label>
+      <input id="victim-key-2" type="text" placeholder="e.g. abcd" autocomplete="off">
+    </div>
+    <button class="btn-primary" onclick="startChat()">Start Monitoring →</button>
+    <div class="security-note">
+      <strong>How it works:</strong> Users with the same password are matched into a private room. Messages are encrypted with a <strong>SHA-256 Stream Cipher + HMAC</strong>. The server only sees an anonymous hash — never your password or messages.
+    </div>
+  </div>
+</div>
+
+<!-- CHAT SCREEN -->
+<div id="chat">
+  <header>
+    <span class="logo-text">🚨 Attacker View</span>
+    <span class="badge" id="role-badge">—</span>
+    <div class="fp" id="fp-display" style="font-size:0.65rem; line-height:1.2;"></div>
+    <div class="header-right">
+      <button onclick="leaveRoom()" class="toggle-btn" style="color:var(--red);border-color:var(--red);">Leave Room</button>
+      <div class="status-dot" id="status-dot"></div>
+      <span id="status-text">Connecting…</span>
+    </div>
+  </header>
+  <div style="background:var(--surf); border-bottom:1px solid var(--border); padding:8px 20px; display:flex; gap:10px; align-items:center;">
+    <span style="font-size:0.75rem; color:var(--muted); font-weight:600;">CRACKING CONSOLE:</span>
+    <input id="live-key-1" type="text" placeholder="Pass Guess 1" style="background:var(--bg); border:1px solid var(--border); color:var(--text); padding:4px 8px; border-radius:4px; font-size:0.75rem; width:120px;" oninput="updateKeys()">
+    <input id="live-key-2" type="text" placeholder="Pass Guess 2" style="background:var(--bg); border:1px solid var(--border); color:var(--text); padding:4px 8px; border-radius:4px; font-size:0.75rem; width:120px;" oninput="updateKeys()">
+    <span style="font-size:0.7rem; color:var(--muted); margin-left:auto;">Try typing password guesses to crack messages live!</span>
+  </div>
+
+  <div class="body" style="position:relative">
+    <div id="waiting">
+      <div class="spinner"></div>
+      <span style="color:var(--muted);font-size:.9rem">Waiting for the other device to connect…</span>
+    </div>
+    <div id="messages-wrap" style="display:none;"></div>
+    <div id="hex-pane">
+      <div class="hex-title">[ Raw Encrypted Bytes ]</div>
+      <div id="hex-content"></div>
+    </div>
+  </div>
+
+  <div id="voice-preview-bar" style="display:none; background:var(--surf2); border-top:1px solid var(--border); padding:10px 20px; align-items:center; gap:12px; flex-shrink:0;">
+    <audio id="voice-preview-audio" controls style="flex:1; height:40px; outline:none; max-width:100%;"></audio>
+    <button onclick="discardVoice()" style="background:var(--surf); border:1px solid var(--red); color:var(--red); padding:10px 16px; border-radius:10px; cursor:pointer; font-weight:600; font-family:'Inter',sans-serif; transition:all 0.2s;">Discard</button>
+    <button onclick="confirmVoice()" style="background:linear-gradient(135deg,var(--cyan),var(--purple)); border:none; color:#fff; padding:10px 20px; border-radius:10px; cursor:pointer; font-weight:700; font-family:'Inter',sans-serif; transition:all 0.2s;">Send Voice</button>
+  </div>
+
+  <footer>
+    <input type="file" id="file-input" style="display:none" onchange="handleFileSelect(event)">
+    <button id="attach-btn" disabled onclick="document.getElementById('file-input').click()" title="Attach File">📎</button>
+    <button id="mic-btn" disabled onclick="toggleRecording()" title="Record Voice Message">🎤</button>
+    <input id="msg-input" type="text" placeholder="Type a message… (Enter to send)" disabled autocomplete="off">
+    <button id="send-btn" disabled onclick="sendMessage()">Send ⟶</button>
+  </footer>
+</div>
+
+<!-- SECURITY ALERT MODAL -->
+<div id="alert-modal">
+  <div class="alert-box">
+    <div class="alert-icon">🚨</div>
+    <h2>Security Alert — Message Rejected</h2>
+    <p id="alert-text"></p>
+    <button onclick="document.getElementById('alert-modal').classList.remove('open')">Dismiss</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  CRYPTO  —  SHA-256 Stream Cipher + HMAC-SHA256
+// ═══════════════════════════════════════════════
+const Crypto = {
+  NONCE:16, MAC:32,
+
+  async keystream(key, nonce, len) {
+    const enc = new TextEncoder(), kb = enc.encode(key);
+    let ks = [];
+    for (let ctr = 0; ks.length < len; ctr++) {
+      const cb = new Uint8Array(8);
+      new DataView(cb.buffer).setBigUint64(0, BigInt(ctr), false);
+      const inp = new Uint8Array([...kb, ...nonce, ...cb]);
+      const h = await crypto.subtle.digest('SHA-256', inp);
+      ks.push(...new Uint8Array(h));
+    }
+    return new Uint8Array(ks.slice(0, len));
+  },
+
+  xor(a, b) { return a.map((v, i) => v ^ b[i]); },
+
+  async mac(key, nonce, ct) {
+    const enc = new TextEncoder();
+    const raw = await crypto.subtle.digest('SHA-256', enc.encode('HMAC:' + key));
+    const mk  = await crypto.subtle.importKey('raw', raw, {name:'HMAC',hash:'SHA-256'}, false, ['sign']);
+    const data = new Uint8Array([...nonce, ...ct]);
+    return new Uint8Array(await crypto.subtle.sign('HMAC', mk, data));
+  },
+
+  async verifyMac(key, nonce, ct, tag) {
+    const exp = await this.mac(key, nonce, ct);
+    if (exp.length !== tag.length) return false;
+    let d = 0; exp.forEach((v,i) => d |= v ^ tag[i]); return d === 0;
+  },
+
+  async encrypt(text, key) {
+    const pt    = new TextEncoder().encode(text);
+    const nonce = crypto.getRandomValues(new Uint8Array(this.NONCE));
+    const ks    = await this.keystream(key, nonce, pt.length);
+    const ct    = new Uint8Array(this.xor([...pt], [...ks]));
+    const tag   = await this.mac(key, nonce, ct);
+    const out   = new Uint8Array(nonce.length + ct.length + tag.length);
+    out.set(nonce); out.set(ct, nonce.length); out.set(tag, nonce.length + ct.length);
+    return out;
+  },
+
+  async decrypt(bytes, key) {
+    if (bytes.length < this.NONCE + this.MAC) throw new Error('TOO_SHORT');
+    const nonce = bytes.slice(0, this.NONCE);
+    const tag   = bytes.slice(bytes.length - this.MAC);
+    const ct    = bytes.slice(this.NONCE, bytes.length - this.MAC);
+    if (!await this.verifyMac(key, nonce, ct, tag)) throw new Error('WRONG_KEY');
+    const ks  = await this.keystream(key, nonce, ct.length);
+    const pt  = new Uint8Array(this.xor([...ct], [...ks]));
+    return new TextDecoder().decode(pt);
+  },
+
+  async fingerprint(key) {
+    const enc = new TextEncoder();
+    const h   = await crypto.subtle.digest('SHA-256', enc.encode('FP:' + key));
+    const hex = [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,16).toUpperCase();
+    return hex.match(/.{4}/g).join(' ');
+  },
+
+  toHex(bytes) {
+    return [...bytes].map(b=>b.toString(16).padStart(2,'0')).join('');
+  }
+};
+
+// ═══════════════════════════════════════════════
+//  CHAT STATE
+// ═══════════════════════════════════════════════
+let ws, secretKey1, secretKey2, roomId, myName, myRole, peerCount = 0, hexOpen = false;
+const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const WS_URL = `${wsProtocol}//${window.location.host}`;
+
+function previewKey(val) {
+  const preview = document.getElementById('key-preview');
+  const chars   = document.getElementById('key-chars');
+  if (val.length >= 1) {
+    preview.style.display = 'block';
+    const key = val.slice(0, 4).padEnd(4, '*'); // show up to 4, pad with * if less
+    chars.textContent = '"' + key + '"';
+  } else {
+    preview.style.display = 'none';
+  }
+}
+
+async function hashPassword(password) {
+  const enc  = new TextEncoder();
+  const buf  = await crypto.subtle.digest('SHA-256', enc.encode('ROOM:' + password));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function startChat() {
+  myName          = 'Attacker';
+  const password  = document.getElementById('secret-key').value;
+  const v1        = document.getElementById('victim-key-1').value.trim();
+  const v2        = document.getElementById('victim-key-2').value.trim();
+  if (!password)  { alert('Please enter a chat password.'); return; }
+
+  secretKey1 = v1 ? v1.slice(0, 4).padEnd(4, '0') : '0000';
+  secretKey2 = v2 ? v2.slice(0, 4).padEnd(4, '0') : '0000';
+
+  // Room ID = SHA-256 hash of password (server never sees actual password)
+  roomId = await hashPassword(password);
+
+  document.getElementById('setup').style.display = 'none';
+  document.getElementById('chat').style.display  = 'flex';
+
+  // Show encryption keys in header
+  document.getElementById('fp-display').innerHTML = `Key 1: "${secretKey1}"<br>Key 2: "${secretKey2}"`;
+  document.getElementById('live-key-1').value = v1;
+  document.getElementById('live-key-2').value = v2;
+
+  connectWS();
+}
+
+function updateKeys() {
+  const v1 = document.getElementById('live-key-1').value.trim();
+  const v2 = document.getElementById('live-key-2').value.trim();
+  secretKey1 = v1 ? v1.slice(0, 4).padEnd(4, '0') : '0000';
+  secretKey2 = v2 ? v2.slice(0, 4).padEnd(4, '0') : '0000';
+  document.getElementById('fp-display').innerHTML = `Key 1: "${secretKey1}"<br>Key 2: "${secretKey2}"`;
+}
+
+function connectWS() {
+  setStatus('Connecting...', 'yellow');
+  ws = new WebSocket(WS_URL);
+  ws.binaryType = 'arraybuffer';
+
+  ws.onopen = () => {
+    // Send join request with hashed room ID (server never sees password)
+    ws.send(JSON.stringify({ type: 'join', room: roomId, name: myName }));
+    setStatus('Joining room...', 'yellow');
+  };
+
+  ws.onmessage = async (e) => {
+    if (typeof e.data === 'string') {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'intercept_alert') {
+        sysMsg(`🚨 SECURITY BREACH: An attacker has intercepted and decrypted a message!`, true);
+        return;
+      }
+      if (msg.type === 'attacker_msg') {
+        // Injected message from attacker!
+        if (msg.text.startsWith('[CHK]')) {
+            if (processReceivedText(msg.text, null, true, 'ATTACKER INJECTION')) {
+                showMitMAlert('Injected Message Detected', 'An attacker has successfully injected a fake file into this room. This proves they can manipulate your conversation!');
+            }
+        } else {
+            addBubble(msg.text, 'peer', null, true, 'ATTACKER INJECTION');
+            showMitMAlert('Injected Message Detected', 'An attacker has successfully injected a fake message into this room. This proves they can manipulate your conversation!');
+        }
+        return;
+      }
+      if (msg.type === 'role') {
+        myRole = msg.role;
+        const badge = document.getElementById('role-badge');
+        badge.textContent = myRole === 'host' ? 'Host' : 'Guest';
+        badge.className   = 'badge badge-' + myRole;
+      }
+      if (msg.type === 'status') {
+        peerCount = msg.peers;
+        if (peerCount > 1) {
+          setStatus(`Peers connected (${peerCount}) — Encrypted`, 'green');
+          document.getElementById('waiting').classList.remove('show');
+          document.getElementById('msg-input').disabled = false;
+          document.getElementById('send-btn').disabled  = false;
+          document.getElementById('mic-btn').disabled = false;
+          document.getElementById('attach-btn').disabled = false;
+          sysMsg(`🔗 Secure encrypted connection established. Total users: ${peerCount}`);
+        } else {
+          setStatus('Waiting for peers…', 'yellow');
+          document.getElementById('waiting').classList.add('show');
+          document.getElementById('msg-input').disabled = true;
+          document.getElementById('send-btn').disabled  = true;
+          document.getElementById('mic-btn').disabled = true;
+          document.getElementById('attach-btn').disabled = true;
+          if (myRole) sysMsg('⚠ All peers disconnected.');
+        }
+      }
+    } else {
+      // Binary = encrypted message from peer
+      const bytes = new Uint8Array(e.data);
+      let decrypted = false;
+
+      // Try Key 1
+      try {
+        const text = await Crypto.decrypt(bytes, secretKey1);
+        processReceivedText(text, Crypto.toHex(bytes), false, 'Key 1');
+        decrypted = true;
+      } catch (e) {}
+
+      // Try Key 2
+      if (!decrypted) {
+        try {
+          const text = await Crypto.decrypt(bytes, secretKey2);
+          processReceivedText(text, Crypto.toHex(bytes), false, 'Key 2');
+          decrypted = true;
+        } catch (e) {}
+      }
+
+      if (decrypted) {
+        // Alert the room that we intercepted a message!
+        ws.send(JSON.stringify({ type: 'intercept_alert' }));
+      } else {
+        const hex = Crypto.toHex(bytes);
+        addBubble(`[ENCRYPTED]: ${hex.slice(0,16)}...`, 'peer', hex);
+        logHex('Encrypted Traffic', hex);
+      }
+    }
+  };
+
+  ws.onclose = () => {
+    if (!ws) return; // Intentional closure
+    setStatus('Disconnected — retrying…', 'red');
+    document.getElementById('msg-input').disabled = true;
+    document.getElementById('send-btn').disabled  = true;
+    document.getElementById('mic-btn').disabled = true;
+    document.getElementById('attach-btn').disabled = true;
+    setTimeout(connectWS, 3000);
+  };
+
+  ws.onerror = () => ws.close();
+}
+
+function leaveRoom() {
+  if (ws) {
+    const tempWs = ws;
+    ws = null;
+    tempWs.close();
+  }
+  document.getElementById('chat').style.display  = 'none';
+  document.getElementById('setup').style.display = 'flex';
+  document.getElementById('messages-wrap').innerHTML = '';
+  document.getElementById('hex-content').innerHTML = '';
+}
+
+// ═══════════════════════════════════════════════
+//  SEND / RECEIVE
+// ═══════════════════════════════════════════════
+let chunkBuffers = {};
+
+function processReceivedText(text, hex, isError, keyLabel) {
+    if (text.startsWith('[CHK]')) {
+        const parts = text.split('|');
+        const msgId = parts[0].substring(5);
+        const chunkIndex = parseInt(parts[1]);
+        const totalChunks = parseInt(parts[2]);
+        const chunkData = parts.slice(3).join('|');
+
+        if (!chunkBuffers[msgId]) {
+            chunkBuffers[msgId] = new Array(totalChunks);
+        }
+        chunkBuffers[msgId][chunkIndex] = chunkData;
+
+        let receivedCount = 0;
+        for (let i = 0; i < totalChunks; i++) {
+            if (chunkBuffers[msgId][i] !== undefined) receivedCount++;
+        }
+
+        if (receivedCount === totalChunks) {
+            const fullText = chunkBuffers[msgId].join('');
+            delete chunkBuffers[msgId];
+            addBubble(fullText, 'peer', hex, isError, keyLabel);
+            return true;
+        }
+        return false;
+    }
+    
+    addBubble(text, 'peer', hex, isError, keyLabel);
+    return true;
+}
+
+const CHUNK_SIZE = 512 * 1024; // 512 KB
+
+async function sendChunked(text) {
+  if (!ws || ws.readyState !== 1) return;
+  
+  if (text.length <= CHUNK_SIZE) {
+      ws.send(JSON.stringify({ type: 'attacker_msg', text: text }));
+      addBubble(text, 'you');
+      return;
+  }
+  
+  const msgId = Math.random().toString(36).substring(2, 9);
+  const totalChunks = Math.ceil(text.length / CHUNK_SIZE);
+  
+  for (let i = 0; i < totalChunks; i++) {
+      const chunkData = text.substring(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+      const chunkMsg = `[CHK]${msgId}|${i}|${totalChunks}|${chunkData}`;
+      
+      if (!ws || ws.readyState !== 1) return;
+      
+      ws.send(JSON.stringify({ type: 'attacker_msg', text: chunkMsg }));
+      await new Promise(r => setTimeout(r, 20));
+  }
+  
+  addBubble(text, 'you');
+}
+
+async function sendMessage() {
+  const inp  = document.getElementById('msg-input');
+  const text = inp.value.trim();
+  if (!text || !ws || ws.readyState !== 1) return;
+  inp.value = '';
+
+  await sendChunked(text);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter') sendMessage();
+});
+
+// ═══════════════════════════════════════════════
+//  UI HELPERS
+// ═══════════════════════════════════════════════
+function addBubble(text, side, hexStr, keyLabel) {
+  const wrap = document.getElementById('messages-wrap');
+  const ts   = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+  const label = side === 'you' ? myName : (keyLabel ? `Peer (${keyLabel})` : 'Peer');
+
+  const row  = document.createElement('div');
+  row.className = 'msg-row ' + side + (keyLabel === 'ATTACKER INJECTION' ? ' msg-error' : '');
+  
+  let contentHtml = '';
+  if (text.startsWith('[VOICE_MSG]')) {
+    const audioSrc = text.substring(11);
+    contentHtml = `<audio controls src="${audioSrc}" style="max-width: 100%; height: 40px; outline: none;"></audio>`;
+  } else if (text.startsWith('[FILE_MSG]')) {
+    const splitIdx = text.indexOf('|');
+    const fileName = text.substring(10, splitIdx);
+    const fileData = text.substring(splitIdx + 1);
+    
+    if (fileData.startsWith('data:image/')) {
+       contentHtml = `<div style="display:flex;flex-direction:column;gap:6px;">
+          <img src="${fileData}" style="max-width:200px;border-radius:8px;" alt="${escHtml(fileName)}" />
+          <a href="${fileData}" download="${escHtml(fileName)}" style="color:var(--cyan);font-size:0.8rem;text-decoration:none;">💾 Download ${escHtml(fileName)}</a>
+       </div>`;
+    } else {
+       contentHtml = `
+          <div style="background:rgba(255,255,255,0.05);padding:10px;border-radius:8px;display:flex;align-items:center;gap:10px;">
+             <span style="font-size:1.5rem;">📄</span>
+             <a href="${fileData}" download="${escHtml(fileName)}" style="color:var(--cyan);font-weight:600;text-decoration:none;">Download: ${escHtml(fileName)}</a>
+          </div>`;
+    }
+  } else {
+    contentHtml = escHtml(text);
+  }
+
+  row.innerHTML = `
+    <div class="bubble">${contentHtml}</div>
+    <div class="msg-meta">
+      <span>${label}</span>
+      <span>${ts}</span>
+      <span class="lock-icon" style="${keyLabel ? 'color:var(--cyan)' : ''}">${keyLabel ? (keyLabel === 'ATTACKER INJECTION' ? '🔓❌' : '🔓') : '🔒'}</span>
+    </div>`;
+  wrap.appendChild(row);
+  wrap.scrollTop = wrap.scrollHeight;
+
+  if (hexStr) logHex(label, hexStr);
+}
+
+let mediaRecorder;
+let audioChunks = [];
+let isRecording = false;
+let pendingVoiceBase64 = null;
+
+function discardVoice() {
+  pendingVoiceBase64 = null;
+  document.getElementById('voice-preview-audio').src = '';
+  document.getElementById('voice-preview-bar').style.display = 'none';
+}
+
+function confirmVoice() {
+  if (pendingVoiceBase64) {
+    sendVoiceMessage(pendingVoiceBase64);
+    discardVoice();
+  }
+}
+
+async function toggleRecording() {
+  const micBtn = document.getElementById('mic-btn');
+  if (!isRecording) {
+    discardVoice();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e => {
+        if (e.data.size > 0) audioChunks.push(e.data);
+      };
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = () => {
+          pendingVoiceBase64 = reader.result;
+          document.getElementById('voice-preview-audio').src = pendingVoiceBase64;
+          document.getElementById('voice-preview-bar').style.display = 'flex';
+          const wrap = document.getElementById('messages-wrap');
+          wrap.scrollTop = wrap.scrollHeight;
+        };
+      };
+      mediaRecorder.start();
+      isRecording = true;
+      micBtn.classList.add('recording');
+      micBtn.innerHTML = '⏹️';
+    } catch (err) {
+      alert("Microphone access denied or error: " + err);
+    }
+  } else {
+    mediaRecorder.stop();
+    mediaRecorder.stream.getTracks().forEach(t => t.stop());
+    isRecording = false;
+    micBtn.classList.remove('recording');
+    micBtn.innerHTML = '🎤';
+  }
+}
+
+async function sendVoiceMessage(base64data) {
+  const text = '[VOICE_MSG]' + base64data;
+  await sendChunked(text);
+}
+
+async function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 20 * 1024 * 1024) { // 20 MB limit to avoid WS crash
+      alert("File is too large! Limit is 20MB.");
+      return;
+  }
+  
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    const base64 = e.target.result;
+    const text = `[FILE_MSG]${file.name}|${base64}`;
+    
+    await sendChunked(text);
+  };
+  reader.readAsDataURL(file);
+  document.getElementById('file-input').value = '';
+}
+
+function sysMsg(text, isWarning) {
+  const wrap = document.getElementById('messages-wrap');
+  const d = document.createElement('div');
+  d.className = 'sys-msg';
+  if (isWarning) {
+    d.style.color = 'var(--red)';
+    d.style.fontWeight = '700';
+    d.style.background = 'rgba(239,68,68,0.1)';
+    d.style.padding = '8px';
+    d.style.borderRadius = '8px';
+  }
+  d.textContent = text;
+  wrap.appendChild(d);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function logHex(label, hex) {
+  const pane = document.getElementById('hex-content');
+  const ts   = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const rows = hex.match(/.{1,32}/g).map(r => r.match(/.{2}/g).join(' ')).join('\n');
+  pane.textContent += `\n[${ts}] ${label}:\n${rows}\n`;
+  pane.scrollTop = pane.scrollHeight;
+}
+
+function setStatus(msg, color) {
+  document.getElementById('status-text').textContent = msg;
+  const dot = document.getElementById('status-dot');
+  dot.className = 'status-dot';
+  if (color === 'green') dot.classList.add('connected');
+  if (color === 'red')   dot.classList.add('error');
+}
+
+function toggleHex() {
+  hexOpen = !hexOpen;
+  document.getElementById('hex-pane').classList.toggle('open', hexOpen);
+  document.getElementById('hex-toggle').classList.toggle('active', hexOpen);
+  document.getElementById('hex-toggle').textContent = hexOpen ? 'Hide Encrypted' : 'Show Encrypted';
+}
+
+function showMitMAlert() {
+  document.getElementById('alert-text').textContent =
+    'HMAC verification failed. This means either:\n\n' +
+    '• The other device is using a different secret key, OR\n' +
+    '• A Man-in-the-Middle attacker modified the message.\n\n' +
+    'The message has been rejected and NOT displayed.';
+  document.getElementById('alert-modal').classList.add('open');
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+</body>
+</html>
